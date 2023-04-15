@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import { registerValidation } from './validations/auth.js';
 import UserModel from './models/User.js';
+import checkAuth from './utils/checkAuth.js';
 
 mongoose
   .connect('mongodb+srv://baisangur:Delb9851973@cluster0.yzeyrrz.mongodb.net/blog')
@@ -20,26 +21,47 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.send('hello word');
 });
+app.get('/auth/me', checkAuth, async (req, res) => {
+  try {
+    const user = await UserModel.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'Пользователь не найден',
+      });
+    }
+    const { passwordHash, ...userData } = user._doc;
+
+    res.json({
+      ...userData,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).res.json({
+      message: 'Нет доступа',
+    });
+  }
+});
 app.post('/auth/login', async (req, res) => {
   try {
     const user = await UserModel.findOne({ email: req.body.email });
 
     if (!user) {
-      return req.status(404).json({
+      return res.status(400).json({
         message: 'Пользователь не найден',
       });
     }
     const isValidPass = await bcrypt.compare(req.body.password, user._doc.passwordHash);
 
     if (!isValidPass) {
-      return req.body.status(404).json({
+      return res.status(400).json({
         message: 'Неверный логин или пароль',
       });
     }
 
     const token = jwt.sign(
       {
-        _id: user._is,
+        _id: user._id,
       },
       'secret123',
       {
@@ -59,7 +81,6 @@ app.post('/auth/login', async (req, res) => {
     });
   }
 });
-
 app.post('/auth/register', registerValidation, async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -77,6 +98,7 @@ app.post('/auth/register', registerValidation, async (req, res) => {
       passwordHash: hash,
     });
     const user = await doc.save();
+
     const token = jwt.sign(
       {
         _id: user._id,
