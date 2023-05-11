@@ -7,7 +7,7 @@ import {
   postCreateValidation,
   registerValidation,
 } from './validations/validations.js';
-import { UserCantroller, PostController } from './controllers/index.js';
+import { UserCantroller, PostController, CommentController } from './controllers/index.js';
 import { checkAuth, handleValidationErrors } from './utils/index.js';
 
 mongoose
@@ -44,7 +44,7 @@ app.post('/upload', checkAuth, uploads.single('image'), (req, res) => {
   });
 });
 app.get('/posts', PostController.getAll);
-app.get('/posts/:id', PostController.getOne);
+app.get('/posts/:id', checkAuth, PostController.getOne);
 app.post('/posts', checkAuth, postCreateValidation, handleValidationErrors, PostController.create);
 app.delete('/posts/:id', checkAuth, PostController.remove);
 app.patch(
@@ -55,6 +55,10 @@ app.patch(
   PostController.update,
 );
 app.get('/tags', PostController.getLastTegs);
+
+app.post('/comment', checkAuth, CommentController.create);
+app.get('/comments', CommentController.getAll);
+app.get('/comments/post/:id', CommentController.getCommentByPost);
 
 app.listen(4444, (err) => {
   if (err) {
